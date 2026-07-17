@@ -3,7 +3,7 @@
 [phases.install]
 cmds = [
   "pnpm install --no-frozen-lockfile",
-  "npx playwright install chromium --with-deps"
+  "pnpm --filter @workspace/api-server exec playwright install chromium --with-deps"
 ]
 
 [phases.build]
