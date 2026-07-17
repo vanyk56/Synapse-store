@@ -439,9 +439,8 @@ bot.on(message("successful_payment"), async (ctx) => {
         `✅ *Оплата получена!*\n\n` +
           `Сумма: ⭐ ${payment.total_amount}\n` +
           `Заказ: #${orderId}\n\n` +
-          `🕐 Запускаем автоматическое пополнение через GGSel...\n` +
-          `Счет для оплаты по СБП будет отправлен администратору для подтверждения.\n` +
-          `Вы получите уведомление, как только баланс зачислится.`,
+          `🕐 Средства на баланс поступят в течение 10 минут.\n\n` +
+          `По вопросам: /menu`,
         { parse_mode: "Markdown" }
       );
 
@@ -460,7 +459,7 @@ bot.on(message("successful_payment"), async (ctx) => {
                 `Сумма: ${amountUsd.toFixed(2)} USD\n` +
                 `Пользователь: ${escapeHtml(ctx.from.first_name)} (@${escapeHtml(ctx.from.username || "no_username")})\n` +
                 `Ссылка: ${escapeHtml(stripeLink)}\n\n` +
-                `🤖 Запуск браузера для оформления на GGSel...`,
+                `🤖 Запуск автоматического оформления заказа...`,
               { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
             );
 
@@ -479,13 +478,7 @@ bot.on(message("successful_payment"), async (ctx) => {
             };
 
             const sendScreenshot = async (filePath: string, caption: string) => {
-              try {
-                await bot.telegram.sendPhoto(
-                  adminId,
-                  { source: filePath },
-                  { caption: `📸 ${caption}` }
-                );
-              } catch (err) {}
+              // Screenshots disabled to avoid cluttering chat
             };
 
             const result = await purchaseProduct(stripeLink, amountUsd, {
@@ -528,7 +521,7 @@ bot.on(message("successful_payment"), async (ctx) => {
               } else {
                 await bot.telegram.sendMessage(
                   adminId,
-                  `⚠️ <b>Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.</b> Пожалуйста, проверьте статус на GGSel вручную.`,
+                  `⚠️ <b>Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.</b> Пожалуйста, проверьте статус заказа вручную.`,
                   { parse_mode: "HTML" }
                 );
               }
