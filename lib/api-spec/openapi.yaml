@@ -1,0 +1,921 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: AI Subscriptions Bot API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: dashboard
+    description: Admin dashboard
+  - name: users
+    description: Telegram users
+  - name: products
+    description: Subscription products/plans
+  - name: ai-models
+    description: AI model configurations
+  - name: orders
+    description: Orders management
+  - name: settings
+    description: App settings
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Dashboard ───────────────────────────────────────────────────────────────
+  /admin/dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /admin/dashboard/recent-orders:
+    get:
+      operationId: getRecentOrders
+      tags: [dashboard]
+      summary: Get recent orders
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderSummary"
+
+  /admin/dashboard/revenue-chart:
+    get:
+      operationId: getRevenueChart
+      tags: [dashboard]
+      summary: Get revenue chart data (last 30 days)
+      responses:
+        "200":
+          description: Chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RevenuePoint"
+
+  # ─── Users ───────────────────────────────────────────────────────────────────
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all Telegram users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+
+  /admin/users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{id}/orders:
+    get:
+      operationId: getUserOrders
+      tags: [users]
+      summary: Get orders for a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderSummary"
+
+  # ─── Products ─────────────────────────────────────────────────────────────────
+  /admin/products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List subscription products
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a new subscription product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /admin/products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete a product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/products/{id}/toggle:
+    patch:
+      operationId: toggleProduct
+      tags: [products]
+      summary: Toggle product active status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  # ─── AI Models ───────────────────────────────────────────────────────────────
+  /admin/ai-models:
+    get:
+      operationId: listAiModels
+      tags: [ai-models]
+      summary: List AI model configurations
+      responses:
+        "200":
+          description: List of AI models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiModel"
+    post:
+      operationId: createAiModel
+      tags: [ai-models]
+      summary: Create an AI model configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiModelInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModel"
+
+  /admin/ai-models/{id}:
+    patch:
+      operationId: updateAiModel
+      tags: [ai-models]
+      summary: Update AI model configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiModelUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModel"
+    delete:
+      operationId: deleteAiModel
+      tags: [ai-models]
+      summary: Delete an AI model configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /admin/ai-models/{id}/toggle:
+    patch:
+      operationId: toggleAiModel
+      tags: [ai-models]
+      summary: Toggle AI model active status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiModel"
+
+  # ─── Orders ──────────────────────────────────────────────────────────────────
+  /admin/orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List all orders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [openrouter, api_key, subscription, null]
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [pending, completed, failed, cancelled, null]
+      responses:
+        "200":
+          description: Paginated orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+
+  /admin/orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/orders/{id}/complete:
+    patch:
+      operationId: completeOrder
+      tags: [orders]
+      summary: Manually mark order as completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+
+  /admin/orders/{id}/cancel:
+    patch:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel an order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDetail"
+
+  # ─── Settings ────────────────────────────────────────────────────────────────
+  /admin/settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get all app settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update app settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppSettingsInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    # ─── Dashboard ──────────────────────────────────────────────────────────────
+    DashboardStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalOrders:
+          type: integer
+        completedOrders:
+          type: integer
+        pendingOrders:
+          type: integer
+        totalRevenueStar:
+          type: integer
+          description: Total revenue in Telegram Stars
+        revenueToday:
+          type: integer
+          description: Revenue today in Stars
+        newUsersToday:
+          type: integer
+        newUsersThisWeek:
+          type: integer
+        ordersByType:
+          type: object
+          properties:
+            openrouter:
+              type: integer
+            api_key:
+              type: integer
+            subscription:
+              type: integer
+          required: [openrouter, api_key, subscription]
+      required:
+        - totalUsers
+        - totalOrders
+        - completedOrders
+        - pendingOrders
+        - totalRevenueStar
+        - revenueToday
+        - newUsersToday
+        - newUsersThisWeek
+        - ordersByType
+
+    RevenuePoint:
+      type: object
+      properties:
+        date:
+          type: string
+        stars:
+          type: integer
+        orders:
+          type: integer
+      required: [date, stars, orders]
+
+    # ─── Users ──────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        telegramId:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: string
+        lastName:
+          type: ["string", "null"]
+        totalOrders:
+          type: integer
+        totalSpentStar:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - telegramId
+        - firstName
+        - totalOrders
+        - totalSpentStar
+        - createdAt
+
+    UserDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        telegramId:
+          type: string
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: string
+        lastName:
+          type: ["string", "null"]
+        totalOrders:
+          type: integer
+        totalSpentStar:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        recentOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderSummary"
+      required:
+        - id
+        - telegramId
+        - firstName
+        - totalOrders
+        - totalSpentStar
+        - createdAt
+        - recentOrders
+
+    UserList:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [users, total, page, limit]
+
+    # ─── Products ───────────────────────────────────────────────────────────────
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        service:
+          type: string
+          description: e.g. "ChatGPT Plus", "Claude Pro"
+        price1m:
+          type: integer
+          description: Price in Telegram Stars for 1 month
+        price3m:
+          type: ["integer", "null"]
+          description: Price for 3 months
+        price6m:
+          type: ["integer", "null"]
+          description: Price for 6 months
+        price12m:
+          type: ["integer", "null"]
+          description: Price for 12 months
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - service
+        - price1m
+        - active
+        - createdAt
+
+    ProductInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        service:
+          type: string
+        price1m:
+          type: integer
+        price3m:
+          type: ["integer", "null"]
+        price6m:
+          type: ["integer", "null"]
+        price12m:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+          default: true
+      required: [name, service, price1m]
+
+    ProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        service:
+          type: string
+        price1m:
+          type: integer
+        price3m:
+          type: ["integer", "null"]
+        price6m:
+          type: ["integer", "null"]
+        price12m:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+
+    # ─── AI Models ──────────────────────────────────────────────────────────────
+    AiModel:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider:
+          type: string
+          description: e.g. "anthropic", "openai", "google", "openrouter"
+        modelId:
+          type: string
+          description: e.g. "claude-opus-4-5", "gpt-4o"
+        modelName:
+          type: string
+          description: Display name e.g. "Claude Opus 4.5"
+        pricePerMillionTokens:
+          type: number
+          description: Base price in USD per 1M tokens (from provider)
+        markupPercent:
+          type: number
+          description: Markup percentage over base price
+        starRatePerUsd:
+          type: number
+          description: Stars per 1 USD for conversion
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - provider
+        - modelId
+        - modelName
+        - pricePerMillionTokens
+        - markupPercent
+        - starRatePerUsd
+        - active
+        - createdAt
+
+    AiModelInput:
+      type: object
+      properties:
+        provider:
+          type: string
+        modelId:
+          type: string
+        modelName:
+          type: string
+        pricePerMillionTokens:
+          type: number
+        markupPercent:
+          type: number
+        starRatePerUsd:
+          type: number
+        active:
+          type: boolean
+          default: true
+      required: [provider, modelId, modelName, pricePerMillionTokens, markupPercent, starRatePerUsd]
+
+    AiModelUpdate:
+      type: object
+      properties:
+        modelName:
+          type: string
+        pricePerMillionTokens:
+          type: number
+        markupPercent:
+          type: number
+        starRatePerUsd:
+          type: number
+        active:
+          type: boolean
+
+    # ─── Orders ─────────────────────────────────────────────────────────────────
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [openrouter, api_key, subscription]
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+        amountStar:
+          type: integer
+        userId:
+          type: integer
+        userFirstName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - status
+        - amountStar
+        - userId
+        - userFirstName
+        - createdAt
+
+    OrderDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [openrouter, api_key, subscription]
+        status:
+          type: string
+          enum: [pending, completed, failed, cancelled]
+        amountStar:
+          type: integer
+        userId:
+          type: integer
+        userFirstName:
+          type: string
+        userTelegramId:
+          type: string
+        meta:
+          type: object
+          description: Order-type-specific metadata
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - status
+        - amountStar
+        - userId
+        - userFirstName
+        - userTelegramId
+        - meta
+        - createdAt
+        - updatedAt
+
+    OrderList:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [orders, total, page, limit]
+
+    # ─── Settings ───────────────────────────────────────────────────────────────
+    AppSettings:
+      type: object
+      properties:
+        defaultMarkupPercent:
+          type: number
+          description: Default markup % for new AI models
+        defaultStarRatePerUsd:
+          type: number
+          description: Default Stars per 1 USD
+        openrouterMarkupPercent:
+          type: number
+          description: Markup on OpenRouter top-up
+        botWelcomeMessage:
+          type: string
+        botSupportUsername:
+          type: ["string", "null"]
+      required:
+        - defaultMarkupPercent
+        - defaultStarRatePerUsd
+        - openrouterMarkupPercent
+        - botWelcomeMessage
+
+    AppSettingsInput:
+      type: object
+      properties:
+        defaultMarkupPercent:
+          type: number
+        defaultStarRatePerUsd:
+          type: number
+        openrouterMarkupPercent:
+          type: number
+        botWelcomeMessage:
+          type: string
+        botSupportUsername:
+          type: ["string", "null"]
