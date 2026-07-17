@@ -14,6 +14,10 @@ import { logger } from "../lib/logger";
 import * as path from "path";
 import { purchaseProduct } from "./ggsel";
 
+function escapeHtml(str: string): string {
+  return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   throw new Error("TELEGRAM_BOT_TOKEN is required");
 }
@@ -452,12 +456,12 @@ bot.on(message("successful_payment"), async (ctx) => {
           try {
             adminStatusMsg = await bot.telegram.sendMessage(
               adminId,
-              `🔔 *Новый заказ #${orderId} на пополнение OpenRouter*\n` +
+              `🔔 <b>Новый заказ #${orderId} на пополнение OpenRouter</b>\n` +
                 `Сумма: ${amountUsd.toFixed(2)} USD\n` +
-                `Пользователь: ${ctx.from.first_name} (@${ctx.from.username || "no_username"})\n` +
-                `Ссылка: ${stripeLink}\n\n` +
+                `Пользователь: ${escapeHtml(ctx.from.first_name)} (@${escapeHtml(ctx.from.username || "no_username")})\n` +
+                `Ссылка: ${escapeHtml(stripeLink)}\n\n` +
                 `🤖 Запуск браузера для оформления на GGSel...`,
-              { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
+              { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
             );
 
             const updateStatus = async (statusText: string) => {
@@ -467,7 +471,8 @@ bot.on(message("successful_payment"), async (ctx) => {
                     adminId,
                     adminStatusMsg.message_id,
                     undefined,
-                    `🔔 *Заказ #${orderId} — Статус:*\n\n${statusText}`
+                    `🔔 <b>Заказ #${orderId} — Статус:</b>\n\n${escapeHtml(statusText)}`,
+                    { parse_mode: "HTML" }
                   );
                 }
               } catch (err) {}
@@ -493,9 +498,10 @@ bot.on(message("successful_payment"), async (ctx) => {
               if (result.sbpLink) {
                 await bot.telegram.sendMessage(
                   adminId,
-                  `💳 *Ссылка на оплату СБП готова для заказа #${orderId}!*\n` +
+                  `💳 <b>Ссылка на оплату СБП готова для заказа #${orderId}!</b>\n` +
                     `Пожалуйста, оплатите в мобильном банке по ссылке или по QR-коду выше.`,
                   {
+                    parse_mode: "HTML",
                     reply_markup: {
                       inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: result.sbpLink }]],
                     },
@@ -516,12 +522,14 @@ bot.on(message("successful_payment"), async (ctx) => {
                 // Notify admin
                 await bot.telegram.sendMessage(
                   adminId,
-                  `✅ *Заказ #${orderId} успешно оплачен и выполнен автоматически!*`
+                  `✅ <b>Заказ #${orderId} успешно оплачен и выполнен автоматически!</b>`,
+                  { parse_mode: "HTML" }
                 );
               } else {
                 await bot.telegram.sendMessage(
                   adminId,
-                  `⚠️ *Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.* Пожалуйста, проверьте статус на GGSel вручную.`
+                  `⚠️ <b>Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.</b> Пожалуйста, проверьте статус на GGSel вручную.`,
+                  { parse_mode: "HTML" }
                 );
               }
             }
@@ -530,7 +538,8 @@ bot.on(message("successful_payment"), async (ctx) => {
             if (adminId) {
               await bot.telegram.sendMessage(
                 adminId,
-                `❌ *Ошибка авто-пополнения для заказа #${orderId}:*\n${err.message}`
+                `❌ <b>Ошибка авто-пополнения для заказа #${orderId}:</b>\n${escapeHtml(err.message)}`,
+                { parse_mode: "HTML" }
               );
             }
             await bot.telegram.sendMessage(
