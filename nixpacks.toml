@@ -1,0 +1,10 @@
+# Nixpacks configuration to customize deployment phases on Railway
+
+[install]
+cmds = ["pnpm install --no-frozen-lockfile"]
+
+[build]
+cmds = ["pnpm run build"]
+
+[start]
+cmd = "pnpm run start"
