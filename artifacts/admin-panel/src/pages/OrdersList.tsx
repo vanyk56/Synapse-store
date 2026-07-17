@@ -36,7 +36,7 @@ export default function OrdersList() {
           <p className="text-muted-foreground mt-2">Просмотр и управление заказами.</p>
         </div>
         <div className="flex space-x-3 w-full sm:w-auto">
-          <Select value={type} onValueChange={(val) => { setType(val as any); setPage(1); }}>
+          <Select value={type ?? undefined} onValueChange={(val) => { setType(val as any); setPage(1); }}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Все типы" />
             </SelectTrigger>
@@ -48,7 +48,7 @@ export default function OrdersList() {
             </SelectContent>
           </Select>
 
-          <Select value={status} onValueChange={(val) => { setStatus(val as any); setPage(1); }}>
+          <Select value={status ?? undefined} onValueChange={(val) => { setStatus(val as any); setPage(1); }}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Все статусы" />
             </SelectTrigger>
