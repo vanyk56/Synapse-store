@@ -1,7 +1,10 @@
 # Nixpacks configuration to override phases on Railway
 
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
+cmds = [
+  "pnpm install --no-frozen-lockfile",
+  "npx playwright install chromium --with-deps"
+]
 
 [phases.build]
 cmds = ["pnpm run build"]

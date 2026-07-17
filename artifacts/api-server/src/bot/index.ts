@@ -11,6 +11,8 @@ import {
 } from "./db-helpers";
 import { calcTokenCostInStars, usdToStars, createProvisionedKey } from "./openrouter";
 import { logger } from "../lib/logger";
+import * as path from "path";
+import { purchaseProduct } from "./ggsel";
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   throw new Error("TELEGRAM_BOT_TOKEN is required");
@@ -312,11 +314,11 @@ bot.on(message("text"), async (ctx) => {
         `Сумма: ${amount.toFixed(2)} USD\n` +
         `К оплате: ⭐ ${stars}\n\n` +
         `📌 *Инструкция:*\n` +
-        `1. Зайдите на [openrouter.ai](https://openrouter.ai)\n` +
-        `2. Перейдите в раздел *Credits* → *Add Credits*\n` +
-        `3. Включите опцию *Use crypto* и выберите нужную сеть\n` +
-        `4. Скопируйте адрес/ссылку для пополнения и отправьте её сюда\n\n` +
-        `_После отправки ссылки вы получите счёт на оплату Telegram Stars_`,
+        `1. Перейдите в настройки [openrouter.ai/credits](https://openrouter.ai/credits)\n` +
+        `2. Нажмите *Add Credits*, выберите оплату картой (Stripe) и введите нужную сумму\n` +
+        `3. На странице оплаты Stripe скопируйте ссылку из адресной строки браузера (она начинается с \`https://checkout.stripe.com/...\`)\n` +
+        `4. Отправьте скопированную ссылку в ответ на это сообщение\n\n` +
+        `_После отправки ссылки вы получите счёт на оплату в Telegram Stars_`,
       { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
     );
     return;
@@ -428,16 +430,122 @@ bot.on(message("successful_payment"), async (ctx) => {
         await ctx.reply("Ошибка обработки заказа. Обратитесь в поддержку.");
         return;
       }
-      const meta = order.meta as Record<string, unknown>;
+      const meta = order.meta as { amountUsd: number; link: string };
       await ctx.reply(
         `✅ *Оплата получена!*\n\n` +
           `Сумма: ⭐ ${payment.total_amount}\n` +
           `Заказ: #${orderId}\n\n` +
-          `🕐 Ваш платёж обрабатывается. Ссылка на пополнение принята.\n` +
-          `После зачисления средств на OpenRouter вы получите уведомление.\n\n` +
-          `По вопросам: /menu`,
+          `🕐 Запускаем автоматическое пополнение через GGSel...\n` +
+          `Счет для оплаты по СБП будет отправлен администратору для подтверждения.\n` +
+          `Вы получите уведомление, как только баланс зачислится.`,
         { parse_mode: "Markdown" }
       );
+
+      // Launch GGSel top-up automation in the background
+      const adminId = process.env.ADMIN_TELEGRAM_ID;
+      const amountUsd = meta.amountUsd;
+      const stripeLink = meta.link;
+
+      if (adminId) {
+        (async () => {
+          let adminStatusMsg: any = null;
+          try {
+            adminStatusMsg = await bot.telegram.sendMessage(
+              adminId,
+              `🔔 *Новый заказ #${orderId} на пополнение OpenRouter*\n` +
+                `Сумма: ${amountUsd.toFixed(2)} USD\n` +
+                `Пользователь: ${ctx.from.first_name} (@${ctx.from.username || "no_username"})\n` +
+                `Ссылка: ${stripeLink}\n\n` +
+                `🤖 Запуск браузера для оформления на GGSel...`,
+              { parse_mode: "Markdown", disable_web_page_preview: true }
+            );
+
+            const updateStatus = async (statusText: string) => {
+              try {
+                if (adminStatusMsg) {
+                  await bot.telegram.editMessageText(
+                    adminId,
+                    adminStatusMsg.message_id,
+                    undefined,
+                    `🔔 *Заказ #${orderId} — Статус:*\n\n${statusText}`
+                  );
+                }
+              } catch (err) {}
+            };
+
+            const sendScreenshot = async (filePath: string, caption: string) => {
+              try {
+                await bot.telegram.sendPhoto(
+                  adminId,
+                  { source: filePath },
+                  { caption: `📸 ${caption}` }
+                );
+              } catch (err) {}
+            };
+
+            const result = await purchaseProduct(stripeLink, amountUsd, {
+              onStatus: updateStatus,
+              onScreenshot: sendScreenshot,
+              tempDir: path.join("./temp", `order-${orderId}`),
+            });
+
+            if (result.success) {
+              if (result.sbpLink) {
+                await bot.telegram.sendMessage(
+                  adminId,
+                  `💳 *Ссылка на оплату СБП готова для заказа #${orderId}!*\n` +
+                    `Пожалуйста, оплатите в мобильном банке по ссылке или по QR-коду выше.`,
+                  {
+                    reply_markup: {
+                      inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: result.sbpLink }]],
+                    },
+                  }
+                );
+              }
+
+              if (result.isPaid) {
+                // Notify user
+                await bot.telegram.sendMessage(
+                  ctx.chat.id,
+                  `🎉 *Баланс OpenRouter успешно пополнен!*\n\n` +
+                    `Сумма: ${amountUsd.toFixed(2)} USD зачислена на ваш аккаунт.\n` +
+                    `Заказ #${orderId} выполнен. Спасибо за покупку!`,
+                  { parse_mode: "Markdown" }
+                );
+
+                // Notify admin
+                await bot.telegram.sendMessage(
+                  adminId,
+                  `✅ *Заказ #${orderId} успешно оплачен и выполнен автоматически!*`
+                );
+              } else {
+                await bot.telegram.sendMessage(
+                  adminId,
+                  `⚠️ *Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.* Пожалуйста, проверьте статус на GGSel вручную.`
+                );
+              }
+            }
+          } catch (err: any) {
+            logger.error({ err, orderId }, "GGSel automation failed");
+            if (adminId) {
+              await bot.telegram.sendMessage(
+                adminId,
+                `❌ *Ошибка авто-пополнения для заказа #${orderId}:*\n${err.message}`
+              );
+            }
+            await bot.telegram.sendMessage(
+              ctx.chat.id,
+              `⚠️ Произошла ошибка при автоматическом проведении платежа. Пожалуйста, обратитесь в поддержку для ручного пополнения. Ваш платёж зафиксирован. Заказ #${orderId}.`
+            );
+          }
+        })();
+      } else {
+        logger.warn({ orderId }, "ADMIN_TELEGRAM_ID is not set, skipping GGSel automation");
+        await ctx.reply(
+          `⚠️ Администратор не настроен в системе (нет ADMIN_TELEGRAM_ID).\n` +
+            `Пожалуйста, обратитесь в поддержку с номером вашего заказа: #${orderId}`
+        );
+      }
     } else if (payload.startsWith("apikey:")) {
       const orderId = Number(payload.split(":")[1]);
 
