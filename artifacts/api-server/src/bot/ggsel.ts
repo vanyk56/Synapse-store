@@ -253,10 +253,11 @@ export async function purchaseProduct(
 
     const links = await page.evaluate(() => {
       const hrefs: string[] = [];
-      document.querySelectorAll("a").forEach((a) => {
+      const doc = (globalThis as any).document;
+      doc.querySelectorAll("a").forEach((a: any) => {
         if (a.href) hrefs.push(a.href);
       });
-      document.querySelectorAll("[onclick]").forEach((el) => {
+      doc.querySelectorAll("[onclick]").forEach((el: any) => {
         const code = el.getAttribute("onclick") || "";
         const match = code.match(/https:\/\/qr\.nspk\.ru\/[^\s'"]+/);
         if (match) hrefs.push(match[0]);
@@ -338,7 +339,7 @@ export async function purchaseProduct(
     await onStatus(`❌ Ошибка во время выполнения авто-покупки: ${error.message}`);
     const errorScreenshot = path.join(tempDir, `error_${Date.now()}.png`);
     await page.screenshot({ path: errorScreenshot }).catch(() => {});
-    await onScreenshot(errorScreenshot, `Ошибка: ${error.message}`).catch(() => {});
+    await onScreenshot(errorScreenshot, `Ошибка: ${error.message}`);
     await browser.close().catch(() => {});
     throw error;
   }

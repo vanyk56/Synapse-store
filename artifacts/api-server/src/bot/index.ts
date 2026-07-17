@@ -457,7 +457,7 @@ bot.on(message("successful_payment"), async (ctx) => {
                 `Пользователь: ${ctx.from.first_name} (@${ctx.from.username || "no_username"})\n` +
                 `Ссылка: ${stripeLink}\n\n` +
                 `🤖 Запуск браузера для оформления на GGSel...`,
-              { parse_mode: "Markdown", disable_web_page_preview: true }
+              { parse_mode: "Markdown", link_preview_options: { is_disabled: true } }
             );
 
             const updateStatus = async (statusText: string) => {
