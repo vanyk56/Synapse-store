@@ -53,7 +53,23 @@ export async function purchaseProduct(
     await onStatus(`🌐 Переход на страницу оформления...`);
     const response = await page.goto(ggselProductUrl, { waitUntil: "load", timeout: 60000 });
 
-    if (response && (response.status() === 403 || response.status() === 503)) {
+    if (!response) {
+      throw new Error("Не удалось загрузить страницу (нет ответа от сервера). Возможно, соединение заблокировано.");
+    }
+
+    const title = await page.title();
+    if (
+      title.includes("Just a moment") ||
+      title.includes("Access denied") ||
+      title.includes("Attention Required") ||
+      title.includes("Forbidden") ||
+      title.includes("DDoS-Guard") ||
+      title.includes("Cloudflare")
+    ) {
+      throw new Error(`Доступ к сайту заблокирован защитой (Cloudflare/DDoS-Guard). Заголовок страницы: "${title}". Требуется ручное выполнение.`);
+    }
+
+    if (response.status() === 403 || response.status() === 503) {
       throw new Error(`Доступ заблокирован защитой Cloudflare (код ${response.status()}). Требуется ручное выполнение.`);
     }
 
@@ -101,8 +117,18 @@ export async function purchaseProduct(
     const paymentLinkSelectors = [
       'input[name="option_text_35856"]',
       'textarea[name="option_text_35856"]',
+      'input[name*="option_text"]',
+      'textarea[name*="option_text"]',
+      'input[name*="option_"]',
+      'textarea[name*="option_"]',
+      'input[id*="option_"]',
+      'textarea[id*="option_"]',
       'input[placeholder*="Ссылка"]',
       'textarea[placeholder*="Ссылка"]',
+      'input[placeholder*="Link"]',
+      'textarea[placeholder*="Link"]',
+      'input[placeholder*="url"]',
+      'textarea[placeholder*="url"]',
       "#option_text_35856",
     ];
 
