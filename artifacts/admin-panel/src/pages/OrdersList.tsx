@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useListOrders, getListOrdersQueryKey } from "@workspace/api-client-react";
-import { ListOrdersType, ListOrdersStatus } from "@workspace/api-client-react/src/generated/api.schemas";
+import { useListOrders, getListOrdersQueryKey, ListOrdersType, ListOrdersStatus } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";

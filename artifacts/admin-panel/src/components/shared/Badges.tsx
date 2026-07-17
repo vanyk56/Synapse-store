@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { OrderSummaryType, OrderSummaryStatus, OrderDetailType, OrderDetailStatus } from "@workspace/api-client-react/src/generated/api.schemas";
+import { OrderSummaryType, OrderSummaryStatus, OrderDetailType, OrderDetailStatus } from "@workspace/api-client-react";
 
 export function ProviderBadge({ provider }: { provider: string }) {
   const p = provider.toLowerCase();
