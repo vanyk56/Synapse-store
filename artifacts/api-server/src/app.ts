@@ -39,7 +39,7 @@ const publicPath = path.resolve(__dirname, "../../admin-panel/dist/public");
 app.use(express.static(publicPath));
 
 // For all other routes, serve index.html for SPA (client-side routing)
-app.get("(.*)", (req, res, next) => {
+app.get("/{*splat}", (req, res, next) => {
   if (req.path.startsWith("/api")) {
     return next();
   }
