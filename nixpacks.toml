@@ -1,9 +1,9 @@
-# Nixpacks configuration to customize deployment phases on Railway
+# Nixpacks configuration to override phases on Railway
 
-[install]
+[phases.install]
 cmds = ["pnpm install --no-frozen-lockfile"]
 
-[build]
+[phases.build]
 cmds = ["pnpm run build"]
 
 [start]
