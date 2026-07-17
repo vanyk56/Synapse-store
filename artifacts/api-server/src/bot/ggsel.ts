@@ -81,6 +81,13 @@ export async function purchaseProduct(
     // 1. Fill Amount
     await onStatus(`✍️ Заполнение суммы: ${amount} USD...`);
 
+    // Wait for the calculator inputs to render (React hydration)
+    try {
+      await page.waitForSelector('input[name="unitsToGet"], input.calc-input, input[name="unitsToPay"]', { timeout: 15000 });
+    } catch (e) {
+      await onStatus(`⚠️ Поля калькулятора не появились вовремя, пробуем продолжить...`);
+    }
+
     const amountInputSelectors = [
       'input[name="unitsToGet"]', // Amount in USD
       "#unitsToGet",
@@ -113,6 +120,13 @@ export async function purchaseProduct(
 
     // 2. Fill Payment Link (Stripe Link)
     await onStatus(`✍️ Заполнение ссылки на оплату...`);
+
+    // Wait for option fields to render (React hydration)
+    try {
+      await page.waitForSelector('input[name*="option_"], textarea[name*="option_"], input[placeholder*="Ссылка"], textarea[placeholder*="Ссылка"]', { timeout: 15000 });
+    } catch (e) {
+      await onStatus(`⚠️ Поле ввода ссылки не появилось вовремя, пробуем продолжить...`);
+    }
 
     const paymentLinkSelectors = [
       'input[name="option_text_35856"]',
