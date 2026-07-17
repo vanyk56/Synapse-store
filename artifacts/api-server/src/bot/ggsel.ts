@@ -50,8 +50,12 @@ export async function purchaseProduct(
   const page = await context.newPage();
 
   try {
-    await onStatus(`🌐 Переход на страницу товара GGSel...`);
-    await page.goto(ggselProductUrl, { waitUntil: "load", timeout: 60000 });
+    await onStatus(`🌐 Переход на страницу оформления...`);
+    const response = await page.goto(ggselProductUrl, { waitUntil: "load", timeout: 60000 });
+
+    if (response && (response.status() === 403 || response.status() === 503)) {
+      throw new Error(`Доступ заблокирован защитой Cloudflare (код ${response.status()}). Требуется ручное выполнение.`);
+    }
 
     // Take screenshot of product page
     const step1Screenshot = path.join(tempDir, `step1_product_page_${Date.now()}.png`);
@@ -336,7 +340,7 @@ export async function purchaseProduct(
       isPaid,
     };
   } catch (error: any) {
-    await onStatus(`❌ Ошибка во время выполнения авто-покупки: ${error.message}`);
+    await onStatus(`❌ Ошибка в процессе автоматического пополнения: ${error.message}`);
     const errorScreenshot = path.join(tempDir, `error_${Date.now()}.png`);
     await page.screenshot({ path: errorScreenshot }).catch(() => {});
     await onScreenshot(errorScreenshot, `Ошибка: ${error.message}`);
