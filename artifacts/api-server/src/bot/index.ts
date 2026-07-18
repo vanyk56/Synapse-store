@@ -439,7 +439,7 @@ bot.on(message("successful_payment"), async (ctx) => {
         `✅ *Оплата получена!*\n\n` +
           `Сумма: ⭐ ${payment.total_amount}\n` +
           `Заказ: #${orderId}\n\n` +
-          `🕐 Средства на баланс поступят в течение 10 минут.\n\n` +
+          `🕐 Обработка платежа. Пожалуйста, ожидайте до 10 минут.\n\n` +
           `По вопросам: /menu`,
         { parse_mode: "Markdown" }
       );

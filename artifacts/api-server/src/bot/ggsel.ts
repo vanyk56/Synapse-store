@@ -340,13 +340,16 @@ export async function purchaseProduct(
     const qrScreenshot = path.join(tempDir, `step4_qr_code_${Date.now()}.png`);
     await page.screenshot({ path: qrScreenshot });
 
+    if (!sbpLink) {
+      sbpLink = page.url();
+      await onStatus(`⚠️ Прямая ссылка СБП не найдена, используем страницу оплаты.`);
+    }
+
     if (sbpLink) {
-      await onStatus(`🎉 Ссылка на оплату СБП успешно получена!`);
+      await onStatus(`🎉 Ссылка на оплату получена!`);
       if (options.onPaymentLink) {
         await options.onPaymentLink(sbpLink);
       }
-    } else {
-      await onStatus(`⚠️ Ссылка на СБП не найдена в DOM, но QR-код должен быть виден на скриншоте.`);
     }
 
     await onScreenshot(
