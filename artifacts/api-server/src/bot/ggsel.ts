@@ -81,14 +81,12 @@ export async function purchaseProduct(
       throw new Error(`Доступ заблокирован защитой Cloudflare (код ${response.status()}). Требуется ручное выполнение.`);
     }
 
-    // Check if the buy button is visible to ensure GGSel page fully loaded instead of a block page
-    const buyButtonVisible = await page
-      .locator('.btn-buy, .product-buy-btn, button:has-text("Купить")')
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (!buyButtonVisible) {
-      throw new Error(`Страница товара не загрузилась полностью (кнопка покупки не найдена). Заголовок страницы: "${title}". Возможно, сработал блок Cloudflare.`);
+    // Wait for the buy button to appear on the page (indicating successful React render)
+    try {
+      await page.waitForSelector('.btn-buy, .product-buy-btn, button:has-text("Купить")', { timeout: 20000 });
+    } catch (e) {
+      const pageTitle = await page.title();
+      throw new Error(`Страница товара не загрузилась полностью (кнопка покупки не найдена). Заголовок страницы: "${pageTitle}". Возможно, сработал блок Cloudflare.`);
     }
 
     // Take screenshot of product page
