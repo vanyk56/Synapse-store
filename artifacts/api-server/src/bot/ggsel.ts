@@ -36,9 +36,17 @@ export async function purchaseProduct(
   }
 
   await onStatus("🚀 Запуск браузера...");
+  const proxyServer = process.env.PROXY_SERVER;
   const browser = await chromium.launch({
     headless,
     args: ["--disable-blink-features=AutomationControlled"], // bypass basic bot detection
+    proxy: proxyServer
+      ? {
+          server: proxyServer,
+          username: process.env.PROXY_USERNAME,
+          password: process.env.PROXY_PASSWORD,
+        }
+      : undefined,
   });
 
   const context = await browser.newContext({
@@ -71,6 +79,16 @@ export async function purchaseProduct(
 
     if (response.status() === 403 || response.status() === 503) {
       throw new Error(`Доступ заблокирован защитой Cloudflare (код ${response.status()}). Требуется ручное выполнение.`);
+    }
+
+    // Check if the buy button is visible to ensure GGSel page fully loaded instead of a block page
+    const buyButtonVisible = await page
+      .locator('.btn-buy, .product-buy-btn, button:has-text("Купить")')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!buyButtonVisible) {
+      throw new Error(`Страница товара не загрузилась полностью (кнопка покупки не найдена). Заголовок страницы: "${title}". Возможно, сработал блок Cloudflare.`);
     }
 
     // Take screenshot of product page
