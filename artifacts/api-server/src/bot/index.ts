@@ -481,26 +481,53 @@ bot.on(message("successful_payment"), async (ctx) => {
               // Screenshots disabled to avoid cluttering chat
             };
 
-            const result = await purchaseProduct(stripeLink, amountUsd, {
-              onStatus: updateStatus,
-              onScreenshot: sendScreenshot,
-              tempDir: path.join("./temp", `order-${orderId}`),
-            });
+            const handlePaymentLink = async (sbpLink: string) => {
+              try {
+                const { db } = await import("@workspace/db");
+                const { ordersTable } = await import("@workspace/db");
+                const { eq } = await import("drizzle-orm");
 
-            if (result.success) {
-              if (result.sbpLink) {
+                const currentOrder = await db
+                  .select()
+                  .from(ordersTable)
+                  .where(eq(ordersTable.id, orderId))
+                  .limit(1);
+                if (currentOrder.length > 0) {
+                  const existingMeta = (currentOrder[0].meta || {}) as Record<string, any>;
+                  await db
+                    .update(ordersTable)
+                    .set({
+                      meta: { ...existingMeta, sbpLink },
+                    })
+                    .where(eq(ordersTable.id, orderId));
+                }
+              } catch (dbErr) {
+                logger.error({ dbErr, orderId }, "Failed to save sbpLink to order meta");
+              }
+
+              if (adminId) {
                 await bot.telegram.sendMessage(
                   adminId,
                   `💳 <b>Ссылка на оплату СБП готова для заказа #${orderId}!</b>\n` +
-                    `Пожалуйста, оплатите в мобильном банке по ссылке или по QR-коду выше.`,
+                    `Пожалуйста, проведите оплату в мобильном банке:`,
                   {
                     parse_mode: "HTML",
                     reply_markup: {
-                      inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: result.sbpLink }]],
+                      inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: sbpLink }]],
                     },
                   }
                 );
               }
+            };
+
+            const result = await purchaseProduct(stripeLink, amountUsd, {
+              onStatus: updateStatus,
+              onScreenshot: sendScreenshot,
+              onPaymentLink: handlePaymentLink,
+              tempDir: path.join("./temp", `order-${orderId}`),
+            });
+
+            if (result.success) {
 
               if (result.isPaid) {
                 // Notify user

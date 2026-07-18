@@ -5,6 +5,7 @@ import * as fs from "fs";
 export interface PurchaseOptions {
   onStatus?: (statusText: string) => Promise<void> | void;
   onScreenshot?: (filePath: string, caption: string) => Promise<void> | void;
+  onPaymentLink?: (sbpLink: string) => Promise<void> | void;
   tempDir?: string;
   email?: string;
   ggselProductUrl?: string;
@@ -341,6 +342,9 @@ export async function purchaseProduct(
 
     if (sbpLink) {
       await onStatus(`🎉 Ссылка на оплату СБП успешно получена!`);
+      if (options.onPaymentLink) {
+        await options.onPaymentLink(sbpLink);
+      }
     } else {
       await onStatus(`⚠️ Ссылка на СБП не найдена в DOM, но QR-код должен быть виден на скриншоте.`);
     }

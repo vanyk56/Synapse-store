@@ -93,6 +93,27 @@ export default function OrderDetail() {
         </div>
       </div>
 
+      {(() => {
+        const meta = order.meta as Record<string, any> | null;
+        const sbpLink = meta?.sbpLink;
+        if (!sbpLink) return null;
+        return (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h4 className="font-semibold text-emerald-500">Оплата заказа по СБП готова!</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Для завершения заказа перейдите по ссылке ниже и проведите платеж в мобильном банке.
+              </p>
+            </div>
+            <a href={sbpLink} target="_blank" rel="noopener noreferrer">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                🔗 Оплатить по СБП
+              </Button>
+            </a>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
