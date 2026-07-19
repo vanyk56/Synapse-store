@@ -463,6 +463,29 @@ bot.on(message("successful_payment"), async (ctx) => {
               { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
             );
 
+            try {
+              const { db } = await import("@workspace/db");
+              const { ordersTable } = await import("@workspace/db");
+              const { eq } = await import("drizzle-orm");
+
+              const currentOrder = await db
+                .select()
+                .from(ordersTable)
+                .where(eq(ordersTable.id, orderId))
+                .limit(1);
+              if (currentOrder.length > 0) {
+                const existingMeta = (currentOrder[0].meta || {}) as Record<string, any>;
+                await db
+                  .update(ordersTable)
+                  .set({
+                    meta: { ...existingMeta, adminStatusMsgId: adminStatusMsg.message_id },
+                  })
+                  .where(eq(ordersTable.id, orderId));
+              }
+            } catch (dbErr) {
+              logger.error({ dbErr, orderId }, "Failed to save adminStatusMsgId to order meta");
+            }
+
             let currentReplyMarkup: any = undefined;
 
             const updateStatus = async (statusText: string) => {
@@ -557,9 +580,10 @@ bot.on(message("successful_payment"), async (ctx) => {
             });
 
             if (result.success) {
-              currentReplyMarkup = undefined; // Clear inline button upon completion
-
               if (result.isPaid) {
+                currentReplyMarkup = undefined; // Clear inline button upon completion
+                await updateStatus("✅ Заказ успешно оплачен и выполнен автоматически!");
+
                 // Notify user
                 await bot.telegram.sendMessage(
                   ctx.chat.id,
@@ -573,12 +597,6 @@ bot.on(message("successful_payment"), async (ctx) => {
                 await bot.telegram.sendMessage(
                   adminId,
                   `✅ <b>Заказ #${orderId} успешно оплачен и выполнен автоматически!</b>`,
-                  { parse_mode: "HTML" }
-                );
-              } else {
-                await bot.telegram.sendMessage(
-                  adminId,
-                  `⚠️ <b>Заказ #${orderId}: Скрипт завершил работу, но оплата не подтвердилась автоматически.</b> Пожалуйста, проверьте статус заказа вручную.`,
                   { parse_mode: "HTML" }
                 );
               }
