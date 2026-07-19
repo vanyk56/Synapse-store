@@ -283,125 +283,13 @@ export async function purchaseProduct(
       await options.onPaymentLink(page.url(), "");
     }
 
-    // Take screenshot of payment method selection
-    const methodScreenshot = path.join(tempDir, `step3_method_selected_${Date.now()}.png`);
-    await page.screenshot({ path: methodScreenshot });
-    await onScreenshot(methodScreenshot, 'Способ оплаты выбран, нажимаем "Оплатить"');
-
-    // 6. Click "Оплатить" (Pay)
-    await onStatus(`💸 Переход к оплате...`);
-    const payButtonSelectors = [
-      'button:has-text("Оплатить")',
-      'input[type="submit"][value*="Оплатить"]',
-      ".btn-pay",
-      'button[type="submit"]',
-    ];
-
-    let payClicked = false;
-    for (const selector of payButtonSelectors) {
-      if (await page.isVisible(selector)) {
-        await page.click(selector);
-        payClicked = true;
-        break;
-      }
-    }
-
-    if (!payClicked) {
-      throw new Error('Кнопка "Оплатить" не найдена!');
-    }
-
-    await onStatus(`⏳ Ожидание загрузки QR-кода СБП...`);
-    await page.waitForTimeout(5000);
-
-    // 7. Find SBP Link / QR Code
-    let sbpLink: string | null = null;
-
-    const links = await page.evaluate(() => {
-      const hrefs: string[] = [];
-      const doc = (globalThis as any).document;
-      doc.querySelectorAll("a").forEach((a: any) => {
-        if (a.href) hrefs.push(a.href);
-      });
-      doc.querySelectorAll("[onclick]").forEach((el: any) => {
-        const code = el.getAttribute("onclick") || "";
-        const match = code.match(/https:\/\/qr\.nspk\.ru\/[^\s'"]+/);
-        if (match) hrefs.push(match[0]);
-      });
-      return hrefs;
-    });
-
-    sbpLink = links.find((l) => l.includes("qr.nspk.ru") || l.includes("link.nspk.ru")) || null;
-
-    if (!sbpLink) {
-      try {
-        const sbpBtn = page.locator('a[href*="qr.nspk.ru"], a[href*="link.nspk.ru"]').first();
-        if (await sbpBtn.isVisible()) {
-          sbpLink = await sbpBtn.getAttribute("href");
-        }
-      } catch (e) {}
-    }
-
-    const qrScreenshot = path.join(tempDir, `step4_qr_code_${Date.now()}.png`);
-    await page.screenshot({ path: qrScreenshot });
-
-    let finalSbpLink = "";
-    if (sbpLink && (sbpLink.includes("qr.nspk.ru") || sbpLink.includes("link.nspk.ru"))) {
-      finalSbpLink = sbpLink;
-    }
-
-    if (options.onPaymentLink) {
-      await options.onPaymentLink(finalSbpLink, qrScreenshot);
-    }
-
-    await onScreenshot(
-      qrScreenshot,
-      `Скриншот экрана оплаты. Ссылка СБП: ${sbpLink || "Не найдена (сканируйте QR-код)"}`
-    );
-
-    // 8. Wait and monitor for payment success
-    await onStatus(`🔄 Ожидание подтверждения оплаты (проверка в течение 10 минут)...`);
-
-    let isPaid = false;
-    const startTime = Date.now();
-    const timeoutMs = 10 * 60 * 1000; // 10 minutes
-
-    while (Date.now() - startTime < timeoutMs) {
-      const currentUrl = page.url();
-
-      if (
-        currentUrl.includes("/order/") ||
-        currentUrl.includes("/info/") ||
-        currentUrl.includes("success")
-      ) {
-        const deliverySection = page.locator(
-          ".goods-delivery, .delivery-info, text=Товар, text=Уникальный код"
-        );
-        if ((await deliverySection.count()) > 0 || currentUrl.includes("/info/")) {
-          isPaid = true;
-          await onStatus(`🎉 Оплата подтверждена! Товар получен.`);
-          const successScreenshot = path.join(tempDir, `step5_success_${Date.now()}.png`);
-          await page.screenshot({ path: successScreenshot });
-          await onScreenshot(
-            successScreenshot,
-            `Товар успешно оплачен и получен! Страница заказа: ${currentUrl}`
-          );
-          break;
-        }
-      }
-
-      await page.waitForTimeout(5000); // Check every 5 seconds
-    }
-
-    if (!isPaid) {
-      await onStatus(`⚠️ Время ожидания оплаты истекло или страница не обновилась.`);
-    }
-
+    await onStatus(`🎉 Ссылка на оплату успешно получена!`);
     await browser.close();
     return {
       success: true,
-      sbpLink,
-      qrScreenshotPath: qrScreenshot,
-      isPaid,
+      sbpLink: page.url(),
+      qrScreenshotPath: "",
+      isPaid: false,
     };
   } catch (error: any) {
     await onStatus(`❌ Ошибка в процессе автоматического пополнения: ${error.message}`);

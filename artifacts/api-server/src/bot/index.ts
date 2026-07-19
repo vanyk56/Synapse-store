@@ -468,11 +468,32 @@ bot.on(message("successful_payment"), async (ctx) => {
             const updateStatus = async (statusText: string) => {
               try {
                 if (adminStatusMsg) {
+                  let friendlyText = "";
+                  const textLower = statusText.toLowerCase();
+
+                  if (
+                    textLower.includes("оформления") ||
+                    textLower.includes("браузера") ||
+                    textLower.includes("заполнение") ||
+                    textLower.includes("ввод") ||
+                    textLower.includes("переход") ||
+                    textLower.includes("кнопки") ||
+                    textLower.includes("запуск")
+                  ) {
+                    friendlyText = `⏳ Обработка пополнения OpenRouter. Пожалуйста, ожидайте...`;
+                  } else if (textLower.includes("ссылка на оплату") || textLower.includes("получена")) {
+                    friendlyText = `💳 Ссылка на оплату СБП готова для заказа #${orderId}!`;
+                  } else if (textLower.includes("ожидание подтверждения")) {
+                    friendlyText = `🔄 Ожидание оплаты пополнения OpenRouter (проверка до 10 минут)...`;
+                  } else {
+                    friendlyText = statusText;
+                  }
+
                   await bot.telegram.editMessageText(
                     adminId,
                     adminStatusMsg.message_id,
                     undefined,
-                    `🔔 <b>Заказ #${orderId} — Статус:</b>\n\n${escapeHtml(statusText)}`,
+                    `🔔 <b>Заказ #${orderId} — Статус:</b>\n\n${escapeHtml(friendlyText)}`,
                     { parse_mode: "HTML", reply_markup: currentReplyMarkup }
                   );
                 }

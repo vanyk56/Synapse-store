@@ -83,6 +83,27 @@ router.patch("/admin/orders/:id/complete", async (req, res) => {
     return;
   }
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId));
+
+  // Notify customer of completion
+  if (user?.telegramId) {
+    try {
+      const { bot } = await import("../../bot");
+      const meta = order.meta as Record<string, any> | null;
+      const amountUsd = meta?.amountUsd;
+      const amountStr = amountUsd ? `${amountUsd.toFixed(2)} USD` : `${order.amountStar} ⭐`;
+
+      await bot.telegram.sendMessage(
+        user.telegramId,
+        `🎉 *Баланс OpenRouter успешно пополнен!*\n\n` +
+          `Сумма: ${amountStr} зачислена на ваш аккаунт.\n` +
+          `Заказ #${order.id} выполнен. Спасибо за покупку!`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (err) {
+      console.error("Failed to send manual completion notification:", err);
+    }
+  }
+
   res.json({
     ...order,
     userFirstName: user?.firstName ?? "Unknown",
