@@ -5,7 +5,7 @@ import * as fs from "fs";
 export interface PurchaseOptions {
   onStatus?: (statusText: string) => Promise<void> | void;
   onScreenshot?: (filePath: string, caption: string) => Promise<void> | void;
-  onPaymentLink?: (sbpLink: string) => Promise<void> | void;
+  onPaymentLink?: (sbpLink: string | null, qrScreenshotPath: string) => Promise<void> | void;
   tempDir?: string;
   email?: string;
   ggselProductUrl?: string;
@@ -340,16 +340,10 @@ export async function purchaseProduct(
     const qrScreenshot = path.join(tempDir, `step4_qr_code_${Date.now()}.png`);
     await page.screenshot({ path: qrScreenshot });
 
-    if (!sbpLink) {
-      sbpLink = page.url();
-      await onStatus(`⚠️ Прямая ссылка СБП не найдена, используем страницу оплаты.`);
-    }
+    const isRealSbpLink = sbpLink && (sbpLink.includes("qr.nspk.ru") || sbpLink.includes("link.nspk.ru"));
 
-    if (sbpLink) {
-      await onStatus(`🎉 Ссылка на оплату получена!`);
-      if (options.onPaymentLink) {
-        await options.onPaymentLink(sbpLink);
-      }
+    if (options.onPaymentLink) {
+      await options.onPaymentLink(isRealSbpLink ? sbpLink : null, qrScreenshot);
     }
 
     await onScreenshot(

@@ -463,6 +463,8 @@ bot.on(message("successful_payment"), async (ctx) => {
               { parse_mode: "HTML", link_preview_options: { is_disabled: true } }
             );
 
+            let currentReplyMarkup: any = undefined;
+
             const updateStatus = async (statusText: string) => {
               try {
                 if (adminStatusMsg) {
@@ -471,7 +473,7 @@ bot.on(message("successful_payment"), async (ctx) => {
                     adminStatusMsg.message_id,
                     undefined,
                     `🔔 <b>Заказ #${orderId} — Статус:</b>\n\n${escapeHtml(statusText)}`,
-                    { parse_mode: "HTML" }
+                    { parse_mode: "HTML", reply_markup: currentReplyMarkup }
                   );
                 }
               } catch (err) {}
@@ -481,7 +483,7 @@ bot.on(message("successful_payment"), async (ctx) => {
               // Screenshots disabled to avoid cluttering chat
             };
 
-            const handlePaymentLink = async (sbpLink: string) => {
+            const handlePaymentLink = async (sbpLink: string | null, qrScreenshotPath: string) => {
               try {
                 const { db } = await import("@workspace/db");
                 const { ordersTable } = await import("@workspace/db");
@@ -505,18 +507,24 @@ bot.on(message("successful_payment"), async (ctx) => {
                 logger.error({ dbErr, orderId }, "Failed to save sbpLink to order meta");
               }
 
-              if (adminId) {
-                await bot.telegram.sendMessage(
-                  adminId,
-                  `💳 <b>Ссылка на оплату СБП готова для заказа #${orderId}!</b>\n` +
-                    `Пожалуйста, проведите оплату в мобильном банке:`,
-                  {
-                    parse_mode: "HTML",
-                    reply_markup: {
-                      inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: sbpLink }]],
-                    },
-                  }
-                );
+              if (adminId && adminStatusMsg) {
+                if (sbpLink) {
+                  // Direct SBP link found! Attach as button to the existing status message
+                  currentReplyMarkup = {
+                    inline_keyboard: [[{ text: "🔗 Оплатить СБП", url: sbpLink }]],
+                  };
+                  await updateStatus("🎉 Ссылка на оплату СБП готова! Оплатите по кнопке ниже.");
+                } else {
+                  // Fallback: send the QR code photo separately
+                  await updateStatus("⚠️ Прямая ссылка СБП не найдена. Пожалуйста, отсканируйте QR-код ниже:");
+                  try {
+                    await bot.telegram.sendPhoto(
+                      adminId,
+                      { source: qrScreenshotPath },
+                      { caption: `📸 QR-код для оплаты заказа #${orderId}` }
+                    );
+                  } catch (e) {}
+                }
               }
             };
 
@@ -528,6 +536,7 @@ bot.on(message("successful_payment"), async (ctx) => {
             });
 
             if (result.success) {
+              currentReplyMarkup = undefined; // Clear inline button upon completion
 
               if (result.isPaid) {
                 // Notify user
