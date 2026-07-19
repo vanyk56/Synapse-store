@@ -279,6 +279,10 @@ export async function purchaseProduct(
       );
     }
 
+    if (options.onPaymentLink) {
+      await options.onPaymentLink(page.url(), null);
+    }
+
     // Take screenshot of payment method selection
     const methodScreenshot = path.join(tempDir, `step3_method_selected_${Date.now()}.png`);
     await page.screenshot({ path: methodScreenshot });
