@@ -5,7 +5,7 @@ import * as fs from "fs";
 export interface PurchaseOptions {
   onStatus?: (statusText: string) => Promise<void> | void;
   onScreenshot?: (filePath: string, caption: string) => Promise<void> | void;
-  onPaymentLink?: (sbpLink: string | null, qrScreenshotPath: string) => Promise<void> | void;
+  onPaymentLink?: (sbpLink: string, qrScreenshotPath: string) => Promise<void> | void;
   tempDir?: string;
   email?: string;
   ggselProductUrl?: string;
@@ -280,7 +280,7 @@ export async function purchaseProduct(
     }
 
     if (options.onPaymentLink) {
-      await options.onPaymentLink(page.url(), null);
+      await options.onPaymentLink(page.url(), "");
     }
 
     // Take screenshot of payment method selection
@@ -347,7 +347,7 @@ export async function purchaseProduct(
     const isRealSbpLink = sbpLink && (sbpLink.includes("qr.nspk.ru") || sbpLink.includes("link.nspk.ru"));
 
     if (options.onPaymentLink) {
-      await options.onPaymentLink(isRealSbpLink ? sbpLink : null, qrScreenshot);
+      await options.onPaymentLink(isRealSbpLink ? sbpLink : "", qrScreenshot);
     }
 
     await onScreenshot(

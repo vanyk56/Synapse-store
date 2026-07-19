@@ -483,7 +483,7 @@ bot.on(message("successful_payment"), async (ctx) => {
               // Screenshots disabled to avoid cluttering chat
             };
 
-            const handlePaymentLink = async (sbpLink: string | null, qrScreenshotPath: string | null) => {
+            const handlePaymentLink = async (sbpLink: string, qrScreenshotPath: string) => {
               try {
                 const { db } = await import("@workspace/db");
                 const { ordersTable } = await import("@workspace/db");
