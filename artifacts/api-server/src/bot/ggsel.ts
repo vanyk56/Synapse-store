@@ -344,10 +344,13 @@ export async function purchaseProduct(
     const qrScreenshot = path.join(tempDir, `step4_qr_code_${Date.now()}.png`);
     await page.screenshot({ path: qrScreenshot });
 
-    const isRealSbpLink = sbpLink && (sbpLink.includes("qr.nspk.ru") || sbpLink.includes("link.nspk.ru"));
+    let finalSbpLink = "";
+    if (sbpLink && (sbpLink.includes("qr.nspk.ru") || sbpLink.includes("link.nspk.ru"))) {
+      finalSbpLink = sbpLink;
+    }
 
     if (options.onPaymentLink) {
-      await options.onPaymentLink(isRealSbpLink ? sbpLink : "", qrScreenshot);
+      await options.onPaymentLink(finalSbpLink, qrScreenshot);
     }
 
     await onScreenshot(
